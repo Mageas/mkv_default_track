@@ -192,17 +192,6 @@ pub fn generate_command<'a>(path: &str, args: &[&str]) -> Command {
     command
 }
 
-/// Generate the args with the id
-pub fn generate_args_by_id(tracks: Vec<&MatroskaTrack>, id: usize) -> String {
-    tracks.iter().fold("".to_string(), |acc, track| {
-        format!(
-            "{acc} --edit track:{} --set flag-default={}",
-            track.id + 1,
-            (track.id + 1 == id) as u8
-        )
-    })
-}
-
 /// Generate the args with the language
 pub fn generate_args_by_language(
     tracks: Vec<&MatroskaTrack>,
@@ -272,4 +261,364 @@ pub fn get_files() -> Vec<fs::DirEntry> {
 
     paths.sort_by_key(|dir| dir.path());
     paths
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_generate_args_by_language_ietf() {
+        let tracks = vec![
+            MatroskaTrack {
+                id: 1,
+                name: Some("Track 1".to_string()),
+                type_: MatroskaTrackType::Audio,
+                default: false,
+                language: "eng".to_string(),
+                language_ietf: "en".to_string(),
+            },
+            MatroskaTrack {
+                id: 2,
+                name: Some("Track 2".to_string()),
+                type_: MatroskaTrackType::Video,
+                default: false,
+                language: "fre".to_string(),
+                language_ietf: "fr".to_string(),
+            },
+            MatroskaTrack {
+                id: 3,
+                name: Some("Track 3".to_string()),
+                type_: MatroskaTrackType::Subtitles,
+                default: false,
+                language: "ger".to_string(),
+                language_ietf: "de".to_string(),
+            },
+        ];
+        let tracks: Vec<&MatroskaTrack> = tracks.iter().map(|t| t).collect();
+
+        let language_ietf = "fr";
+        let name = Some("Track 2".to_string());
+        let args = generate_args_by_language_ietf(tracks, language_ietf, name);
+        let expected_args = " --edit track:2 --set flag-default=0 --edit track:3 --set flag-default=1 --edit track:4 --set flag-default=0";
+        assert_eq!(args, expected_args);
+    }
+
+    #[test]
+    fn test_generate_args_by_language() {
+        let tracks = vec![
+            MatroskaTrack {
+                id: 1,
+                name: Some("Track 1".to_string()),
+                type_: MatroskaTrackType::Audio,
+                default: false,
+                language: "eng".to_string(),
+                language_ietf: "en".to_string(),
+            },
+            MatroskaTrack {
+                id: 2,
+                name: Some("Track 2".to_string()),
+                type_: MatroskaTrackType::Video,
+                default: false,
+                language: "fre".to_string(),
+                language_ietf: "fr".to_string(),
+            },
+            MatroskaTrack {
+                id: 3,
+                name: Some("Track 3".to_string()),
+                type_: MatroskaTrackType::Subtitles,
+                default: false,
+                language: "ger".to_string(),
+                language_ietf: "de".to_string(),
+            },
+        ];
+        let tracks: Vec<&MatroskaTrack> = tracks.iter().map(|t| t).collect();
+
+        let language = "eng";
+        let name = Some("Track 1".to_string());
+        let args = generate_args_by_language(tracks, language, name);
+        let expected_args = " --edit track:2 --set flag-default=1 --edit track:3 --set flag-default=0 --edit track:4 --set flag-default=0";
+        assert_eq!(args, expected_args);
+    }
+
+    #[test]
+    fn test_generate_command() {
+        let path = "test.mkv";
+        let args = [
+            "--edit track:1 --set flag-default=1",
+            "--edit track:2 --set flag-default=0",
+        ];
+        let command = generate_command(path, &args);
+
+        let mut expected_command = Command::new("mkvpropedit");
+        expected_command
+            .arg(path)
+            .arg("--edit")
+            .arg("track:1")
+            .arg("--set")
+            .arg("flag-default=1")
+            .arg("--edit")
+            .arg("track:2")
+            .arg("--set")
+            .arg("flag-default=0");
+
+        let expected_command = expected_command
+            .get_args()
+            .collect::<Vec<&std::ffi::OsStr>>();
+        let command = command.get_args().collect::<Vec<&std::ffi::OsStr>>();
+
+        assert_eq!(command, expected_command);
+    }
+
+    #[test]
+    fn test_get_tracks_languages_ieft() {
+        let tracks = vec![
+            MatroskaTrack {
+                id: 1,
+                name: Some("Track 1".to_string()),
+                type_: MatroskaTrackType::Audio,
+                default: false,
+                language: "eng".to_string(),
+                language_ietf: "en".to_string(),
+            },
+            MatroskaTrack {
+                id: 2,
+                name: Some("Track 2".to_string()),
+                type_: MatroskaTrackType::Video,
+                default: false,
+                language: "fre".to_string(),
+                language_ietf: "fr".to_string(),
+            },
+            MatroskaTrack {
+                id: 3,
+                name: Some("Track 3".to_string()),
+                type_: MatroskaTrackType::Subtitles,
+                default: false,
+                language: "ger".to_string(),
+                language_ietf: "und".to_string(),
+            },
+        ];
+        let tracks: Vec<&MatroskaTrack> = tracks.iter().map(|t| t).collect();
+
+        let result = get_tracks_languages_ieft(tracks);
+        let expected = vec![
+            Same {
+                language: "eng".to_owned(),
+                language_ietf: "en".to_owned(),
+                name: Some("Track 1".to_string()),
+            },
+            Same {
+                language: "fre".to_owned(),
+                language_ietf: "fr".to_owned(),
+                name: Some("Track 2".to_string()),
+            },
+        ];
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_get_tracks_languages() {
+        let tracks = vec![
+            MatroskaTrack {
+                id: 1,
+                name: Some("Track 1".to_string()),
+                type_: MatroskaTrackType::Audio,
+                default: false,
+                language: "eng".to_string(),
+                language_ietf: "en".to_string(),
+            },
+            MatroskaTrack {
+                id: 2,
+                name: Some("Track 2".to_string()),
+                type_: MatroskaTrackType::Video,
+                default: false,
+                language: "fre".to_string(),
+                language_ietf: "fr".to_string(),
+            },
+            MatroskaTrack {
+                id: 3,
+                name: Some("Track 3".to_string()),
+                type_: MatroskaTrackType::Subtitles,
+                default: false,
+                language: "und".to_string(),
+                language_ietf: "ge".to_string(),
+            },
+        ];
+        let tracks: Vec<&MatroskaTrack> = tracks.iter().map(|t| t).collect();
+
+        let result = get_tracks_languages(tracks);
+        let expected = vec![
+            Same {
+                language: "eng".to_owned(),
+                language_ietf: "en".to_owned(),
+                name: Some("Track 1".to_string()),
+            },
+            Same {
+                language: "fre".to_owned(),
+                language_ietf: "fr".to_owned(),
+                name: Some("Track 2".to_string()),
+            },
+        ];
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_get_same_languages_ietf() {
+        let mkvs = vec![
+            Matroska {
+                path: "test1.mkv".to_string(),
+                tracks: vec![
+                    MatroskaTrack {
+                        id: 1,
+                        name: Some("Track 1".to_string()),
+                        type_: MatroskaTrackType::Audio,
+                        default: false,
+                        language: "eng".to_string(),
+                        language_ietf: "en".to_string(),
+                    },
+                    MatroskaTrack {
+                        id: 2,
+                        name: None,
+                        type_: MatroskaTrackType::Audio,
+                        default: false,
+                        language: "fre".to_string(),
+                        language_ietf: "fr".to_string(),
+                    },
+                    MatroskaTrack {
+                        id: 3,
+                        name: Some("Track 3".to_string()),
+                        type_: MatroskaTrackType::Subtitles,
+                        default: false,
+                        language: "ger".to_string(),
+                        language_ietf: "de".to_string(),
+                    },
+                ],
+            },
+            Matroska {
+                path: "test2.mkv".to_string(),
+                tracks: vec![
+                    MatroskaTrack {
+                        id: 1,
+                        name: Some("Track 1".to_string()),
+                        type_: MatroskaTrackType::Audio,
+                        default: false,
+                        language: "eng".to_string(),
+                        language_ietf: "en".to_string(),
+                    },
+                    MatroskaTrack {
+                        id: 2,
+                        name: None,
+                        type_: MatroskaTrackType::Audio,
+                        default: false,
+                        language: "fre".to_string(),
+                        language_ietf: "fr".to_string(),
+                    },
+                    MatroskaTrack {
+                        id: 3,
+                        name: Some("Track 3".to_string()),
+                        type_: MatroskaTrackType::Subtitles,
+                        default: false,
+                        language: "spa".to_string(),
+                        language_ietf: "es".to_string(),
+                    },
+                ],
+            },
+        ];
+
+        let track_type = MatroskaTrackType::Audio;
+        let result = get_same_languages_ietf(&mkvs, track_type);
+        let expected = vec![
+            Same {
+                language: "eng".to_string(),
+                language_ietf: "en".to_string(),
+                name: Some("Track 1".to_string()),
+            },
+            Same {
+                language: "fre".to_string(),
+                language_ietf: "fr".to_string(),
+                name: None,
+            },
+        ];
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_get_same_languages() {
+        let mkvs = vec![
+            Matroska {
+                path: "test1.mkv".to_string(),
+                tracks: vec![
+                    MatroskaTrack {
+                        id: 1,
+                        name: Some("Track 1".to_string()),
+                        type_: MatroskaTrackType::Audio,
+                        default: false,
+                        language: "eng".to_string(),
+                        language_ietf: "en".to_string(),
+                    },
+                    MatroskaTrack {
+                        id: 2,
+                        name: None,
+                        type_: MatroskaTrackType::Audio,
+                        default: false,
+                        language: "fre".to_string(),
+                        language_ietf: "fr".to_string(),
+                    },
+                    MatroskaTrack {
+                        id: 3,
+                        name: Some("Track 3".to_string()),
+                        type_: MatroskaTrackType::Subtitles,
+                        default: false,
+                        language: "ger".to_string(),
+                        language_ietf: "de".to_string(),
+                    },
+                ],
+            },
+            Matroska {
+                path: "test2.mkv".to_string(),
+                tracks: vec![
+                    MatroskaTrack {
+                        id: 1,
+                        name: Some("Track 1".to_string()),
+                        type_: MatroskaTrackType::Audio,
+                        default: false,
+                        language: "eng".to_string(),
+                        language_ietf: "en".to_string(),
+                    },
+                    MatroskaTrack {
+                        id: 2,
+                        name: None,
+                        type_: MatroskaTrackType::Audio,
+                        default: false,
+                        language: "fre".to_string(),
+                        language_ietf: "fr".to_string(),
+                    },
+                    MatroskaTrack {
+                        id: 3,
+                        name: Some("Track 3".to_string()),
+                        type_: MatroskaTrackType::Subtitles,
+                        default: false,
+                        language: "spa".to_string(),
+                        language_ietf: "es".to_string(),
+                    },
+                ],
+            },
+        ];
+
+        let track_type = MatroskaTrackType::Audio;
+        let result = get_same_languages(&mkvs, track_type);
+        let expected = vec![
+            Same {
+                language: "eng".to_string(),
+                language_ietf: "en".to_string(),
+                name: Some("Track 1".to_string()),
+            },
+            Same {
+                language: "fre".to_string(),
+                language_ietf: "fr".to_string(),
+                name: None,
+            },
+        ];
+        assert_eq!(result, expected);
+    }
 }
