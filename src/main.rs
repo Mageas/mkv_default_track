@@ -6,6 +6,9 @@ mod error;
 mod matroska;
 mod same;
 
+use dialoguer::console::Term;
+use dialoguer::{theme::ColorfulTheme, Select};
+
 use crate::error::TempResult;
 use crate::matroska::*;
 use crate::same::Same;
@@ -13,6 +16,7 @@ use crate::same::Same;
 fn main() -> TempResult {
     let mkvs = get_files_to_matroska(get_files())?;
 
+    // TODO: do not check `inner == *outer`
     let same_subs: Vec<Same> = get_same_languages(&mkvs, MatroskaTrackType::Subtitles)
         .iter()
         .filter(|outer| {
@@ -23,6 +27,7 @@ fn main() -> TempResult {
         .cloned()
         .collect();
 
+    // TODO: do not check `inner == *outer`
     let same_audios: Vec<Same> = get_same_languages(&mkvs, MatroskaTrackType::Audio)
         .iter()
         .filter(|outer| {
@@ -33,47 +38,77 @@ fn main() -> TempResult {
         .cloned()
         .collect();
 
-    dbg!(&same_subs, &same_audios);
+    let selection = Select::with_theme(&ColorfulTheme::default())
+        .with_prompt("> Please choose the subtitle track:")
+        .items(&same_subs)
+        .default(0)
+        .interact_on_opt(&Term::stderr())
+        .unwrap();
 
-    let choosen_sub = &same_subs[1];
-    let choosen_audio = &same_audios[0];
+    let choosen_sub = match selection {
+        Some(i) => same_subs.get(i),
+        None => None,
+    };
+
+    let selection = Select::with_theme(&ColorfulTheme::default())
+        .with_prompt("> Please choose the audio track:")
+        .items(&same_audios)
+        .default(0)
+        .interact_on_opt(&Term::stderr())
+        .unwrap();
+
+    let choosen_audio = match selection {
+        Some(i) => same_audios.get(i),
+        None => None,
+    };
 
     for matroska in &mkvs {
-        let subtitle_args = if choosen_sub.language_ietf == "und" {
-            generate_args_by_language(
-                matroska.get_subtitles(),
-                &choosen_sub.language,
-                choosen_sub.name.to_owned(),
-            )
-        } else {
-            generate_args_by_language_ietf(
-                matroska.get_subtitles(),
-                &choosen_sub.language_ietf,
-                choosen_sub.name.to_owned(),
-            )
+        let subtitle_args = match choosen_sub {
+            Some(sub) => {
+                if sub.language_ietf == "und" {
+                    generate_args_by_language(
+                        matroska.get_subtitles(),
+                        &sub.language,
+                        sub.name.to_owned(),
+                    )
+                } else {
+                    generate_args_by_language_ietf(
+                        matroska.get_subtitles(),
+                        &sub.language_ietf,
+                        sub.name.to_owned(),
+                    )
+                }
+            }
+            None => String::new(),
         };
-        let audio_args = if choosen_audio.language_ietf == "und" {
-            generate_args_by_language(
-                matroska.get_audios(),
-                &choosen_audio.language,
-                choosen_audio.name.to_owned(),
-            )
-        } else {
-            generate_args_by_language_ietf(
-                matroska.get_audios(),
-                &choosen_audio.language_ietf,
-                choosen_audio.name.to_owned(),
-            )
+
+        let audio_args = match choosen_audio {
+            Some(audio) => {
+                if audio.language_ietf == "und" {
+                    generate_args_by_language(
+                        matroska.get_audios(),
+                        &audio.language,
+                        audio.name.to_owned(),
+                    )
+                } else {
+                    generate_args_by_language_ietf(
+                        matroska.get_audios(),
+                        &audio.language_ietf,
+                        audio.name.to_owned(),
+                    )
+                }
+            }
+            None => String::new(),
         };
+
+        if subtitle_args.is_empty() && audio_args.is_empty() {
+            break;
+        }
 
         let mut command = generate_command(&matroska.path, &[&audio_args, &subtitle_args]);
-        dbg!(&command);
-
         let command = command.output().unwrap();
 
         let stdout = String::from_utf8_lossy(&command.stdout).to_string();
-
-        dbg!(stdout);
     }
 
     // Debug

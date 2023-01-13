@@ -1,3 +1,5 @@
+use std::fmt;
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Same {
     pub language: String,
@@ -12,6 +14,22 @@ impl Same {
             language_ietf: language_ietf.to_owned(),
             name,
         }
+    }
+}
+
+impl fmt::Display for Same {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let language = if &self.language_ietf == "und" {
+            &self.language
+        } else {
+            &self.language_ietf
+        };
+
+        match &self.name {
+            Some(name) => write!(f, "{language} ({name})"),
+            None => write!(f, "{language}"),
+        }
+        // write!(f, "{} <{}>", self.name, self.email)
     }
 }
 
