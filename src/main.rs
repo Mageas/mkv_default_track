@@ -1,5 +1,5 @@
-use std::fs;
 use std::process::Command;
+use std::{fmt, fs};
 
 mod deserialize;
 mod error;
@@ -62,6 +62,7 @@ fn main() -> TempResult {
         None => None,
     };
 
+    let mut result_commands = vec![];
     for matroska in &mkvs {
         let subtitle_args = match choosen_sub {
             Some(sub) => {
@@ -108,39 +109,34 @@ fn main() -> TempResult {
         let mut command = generate_command(&matroska.path, &[&audio_args, &subtitle_args]);
         let command = command.output().unwrap();
 
-        let stdout = String::from_utf8_lossy(&command.stdout).to_string();
-    }
-
-    // Debug
-    let mkvs = get_files_to_matroska(get_files())?;
-    for matroska in &mkvs {
-        println!(" ** Audios **");
-        for track in matroska.get_audios() {
-            print!("[{}] ", track.id);
-            if track.default {
-                print!("D ");
-            }
-            println!("{:?} | {:?}", &track.language, &track.language_ietf);
-        }
-
-        println!(" ** Subtitles **");
-        for track in matroska.get_subtitles() {
-            print!("[{}] ", track.id);
-            if track.default {
-                print!("D ");
-            }
-            if let Some(name) = &track.name {
-                println!(
-                    "{:?} ({}) | {:?}",
-                    &track.language, name, &track.language_ietf
-                );
-            } else {
-                println!("{:?} | {:?}", &track.language, &track.language_ietf);
-            }
+        match &command.status.success() {
+            true => result_commands.push(ResultCommand::Success(matroska.path.to_owned())),
+            false => result_commands.push(ResultCommand::Error(
+                matroska.path.to_owned(),
+                String::from_utf8_lossy(&command.stderr).to_string(),
+            )),
         }
     }
+
+    println!(">> Result:");
+    result_commands.iter().for_each(|r| println!("{}", r));
 
     Ok(())
+}
+
+#[derive(Debug)]
+pub enum ResultCommand {
+    Success(String),
+    Error(String, String),
+}
+
+impl fmt::Display for ResultCommand {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self {
+            ResultCommand::Success(path) => write!(f, "Success {path}"),
+            ResultCommand::Error(path, err) => write!(f, "Error {path} ({err})"),
+        }
+    }
 }
 
 /// Get the same languages
