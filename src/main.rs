@@ -16,6 +16,11 @@ use crate::same::Same;
 fn main() -> TempResult {
     let mkvs = get_files_to_matroska(get_files())?;
 
+    if mkvs.is_empty() {
+        println!("Unable to find any '.mkv' files");
+        return Ok(());
+    }
+
     // TODO: do not check `inner == *outer`
     let same_subs: Vec<Same> = get_same_languages(&mkvs, MatroskaTrackType::Subtitles)
         .iter()
