@@ -63,7 +63,11 @@ impl Matroska {
                         DeserializeMatroskaTrackType::Subtitles => MatroskaTrackType::Subtitles,
                     },
                     language: track.properties.language.clone(),
-                    language_ietf: track.properties.language_ietf.clone(),
+                    language_ietf: track
+                        .properties
+                        .language_ietf
+                        .clone()
+                        .unwrap_or_else(|| "und".to_string()),
                     default: track.properties.default_track,
                 })
                 .collect(),

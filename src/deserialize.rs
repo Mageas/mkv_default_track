@@ -18,7 +18,7 @@ pub struct DeserializeMatroskaTrackProperties {
     pub default_track: bool,
     pub track_name: Option<String>,
     pub language: String,
-    pub language_ietf: String,
+    pub language_ietf: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]

@@ -21,26 +21,26 @@ fn main() -> TempResult {
         return Ok(());
     }
 
-    // TODO: do not check `inner == *outer`
-    let same_subs: Vec<Same> = get_same_languages(&mkvs, MatroskaTrackType::Subtitles)
-        .iter()
-        .filter(|outer| {
+    let same_subs: Vec<Same> = get_same_languages(&mkvs, MatroskaTrackType::Subtitles);
+    let same_subs: Vec<Same> = same_subs
+        .clone()
+        .into_iter()
+        .chain(
             get_same_languages_ietf(&mkvs, MatroskaTrackType::Subtitles)
-                .iter()
-                .any(|inner| inner == *outer)
-        })
-        .cloned()
+                .into_iter()
+                .filter(|inner| !same_subs.contains(inner)),
+        )
         .collect();
 
-    // TODO: do not check `inner == *outer`
-    let same_audios: Vec<Same> = get_same_languages(&mkvs, MatroskaTrackType::Audio)
-        .iter()
-        .filter(|outer| {
+    let same_audios: Vec<Same> = get_same_languages(&mkvs, MatroskaTrackType::Audio);
+    let same_audios: Vec<Same> = same_audios
+        .clone()
+        .into_iter()
+        .chain(
             get_same_languages_ietf(&mkvs, MatroskaTrackType::Audio)
-                .iter()
-                .any(|inner| inner == *outer)
-        })
-        .cloned()
+                .into_iter()
+                .filter(|inner| !same_audios.contains(inner)),
+        )
         .collect();
 
     let selection = Select::with_theme(&ColorfulTheme::default())
