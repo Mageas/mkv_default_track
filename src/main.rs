@@ -154,15 +154,11 @@ pub fn get_same_languages(mkvs: &Vec<Matroska>, track_type: MatroskaTrackType) -
             continue;
         }
 
-        output = output
-            .iter()
-            .filter(|outer| {
-                tracks
-                    .iter()
-                    .any(|inner| inner.language == outer.language && inner.name == outer.name)
-            })
-            .cloned()
-            .collect();
+        output.retain(|outer| {
+            tracks
+                .iter()
+                .any(|inner| inner.language == outer.language && inner.name == outer.name)
+        });
     }
     output
 }
@@ -191,15 +187,11 @@ pub fn get_same_languages_ietf(mkvs: &Vec<Matroska>, track_type: MatroskaTrackTy
             continue;
         }
 
-        output = output
-            .iter()
-            .filter(|outer| {
-                tracks.iter().any(|inner| {
-                    inner.language_ietf == outer.language_ietf && inner.name == outer.name
-                })
-            })
-            .cloned()
-            .collect();
+        output.retain(|outer| {
+            tracks
+                .iter()
+                .any(|inner| inner.language_ietf == outer.language_ietf && inner.name == outer.name)
+        });
     }
     output
 }
@@ -214,7 +206,7 @@ pub fn get_tracks_languages_ieft(tracks: Vec<&MatroskaTrack>) -> Vec<Same> {
 }
 
 /// Generate the command
-pub fn generate_command<'a>(path: &str, args: &[&str]) -> Command {
+pub fn generate_command(path: &str, args: &[&str]) -> Command {
     let mut command = Command::new("mkvpropedit");
     command.arg(path);
     args.iter()
@@ -284,11 +276,7 @@ pub fn get_files_to_matroska(paths: Vec<fs::DirEntry>) -> TempResult<Vec<Matrosk
 
 /// Get the files of the current directory
 pub fn get_files() -> Vec<fs::DirEntry> {
-    let mut paths: Vec<_> = fs::read_dir(".")
-        .unwrap()
-        .filter(|r| r.is_ok())
-        .map(|r| r.unwrap())
-        .collect();
+    let mut paths: Vec<_> = fs::read_dir(".").unwrap().filter_map(|r| r.ok()).collect();
 
     paths.sort_by_key(|dir| dir.path());
     paths
@@ -326,7 +314,7 @@ mod tests {
                 language_ietf: "de".to_string(),
             },
         ];
-        let tracks: Vec<&MatroskaTrack> = tracks.iter().map(|t| t).collect();
+        let tracks: Vec<&MatroskaTrack> = tracks.iter().collect();
 
         let language_ietf = "fr";
         let name = Some("Track 2".to_string());
@@ -363,7 +351,7 @@ mod tests {
                 language_ietf: "de".to_string(),
             },
         ];
-        let tracks: Vec<&MatroskaTrack> = tracks.iter().map(|t| t).collect();
+        let tracks: Vec<&MatroskaTrack> = tracks.iter().collect();
 
         let language = "eng";
         let name = Some("Track 1".to_string());
@@ -429,7 +417,7 @@ mod tests {
                 language_ietf: "und".to_string(),
             },
         ];
-        let tracks: Vec<&MatroskaTrack> = tracks.iter().map(|t| t).collect();
+        let tracks: Vec<&MatroskaTrack> = tracks.iter().collect();
 
         let result = get_tracks_languages_ieft(tracks);
         let expected = vec![
@@ -475,7 +463,7 @@ mod tests {
                 language_ietf: "ge".to_string(),
             },
         ];
-        let tracks: Vec<&MatroskaTrack> = tracks.iter().map(|t| t).collect();
+        let tracks: Vec<&MatroskaTrack> = tracks.iter().collect();
 
         let result = get_tracks_languages(tracks);
         let expected = vec![

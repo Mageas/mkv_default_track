@@ -29,26 +29,17 @@ pub enum MatroskaTrackType {
 impl MatroskaTrack {
     /// Is this a video
     pub fn is_video(&self) -> bool {
-        match self.type_ {
-            MatroskaTrackType::Video => true,
-            _ => false,
-        }
+        matches!(self.type_, MatroskaTrackType::Video)
     }
 
     /// Is this an audio
     pub fn is_audio(&self) -> bool {
-        match self.type_ {
-            MatroskaTrackType::Audio => true,
-            _ => false,
-        }
+        matches!(self.type_, MatroskaTrackType::Audio)
     }
 
     /// Is this a subtitle
     pub fn is_subtitle(&self) -> bool {
-        match self.type_ {
-            MatroskaTrackType::Subtitles => true,
-            _ => false,
-        }
+        matches!(self.type_, MatroskaTrackType::Subtitles)
     }
 }
 
@@ -56,7 +47,7 @@ impl Matroska {
     /// Create a Matroska from a string
     pub fn from_string(path: &str, input: String) -> TempResult<Self> {
         let infos: DeserializeMatroska =
-            serde_json::from_str(&input).map_err(|e| TempError::Deserialize(e))?;
+            serde_json::from_str(&input).map_err(TempError::Deserialize)?;
 
         Ok(Self {
             path: path.to_owned(),
@@ -130,22 +121,16 @@ mod tests {
         let matroska = Matroska::from_string(path, input).unwrap();
         assert_eq!(matroska.path, path);
         assert_eq!(matroska.tracks[0].id, 1);
-        assert_eq!(
-            matroska.tracks[0].name.as_deref(),
-            Some("Track 1").as_deref()
-        );
+        assert_eq!(matroska.tracks[0].name.as_deref(), Some("Track 1"));
 
         assert_eq!(matroska.tracks[0].language, "eng");
         assert_eq!(matroska.tracks[0].language_ietf, "en");
-        assert_eq!(matroska.tracks[0].default, true);
+        assert!(matroska.tracks[0].default);
         assert_eq!(matroska.tracks[1].id, 2);
-        assert_eq!(
-            matroska.tracks[1].name.as_deref(),
-            Some("Track 2").as_deref()
-        );
+        assert_eq!(matroska.tracks[1].name.as_deref(), Some("Track 2"));
         assert_eq!(matroska.tracks[1].language, "fre");
         assert_eq!(matroska.tracks[1].language_ietf, "fr");
-        assert_eq!(matroska.tracks[1].default, false);
+        assert!(matroska.tracks[1].default);
     }
 
     #[test]
