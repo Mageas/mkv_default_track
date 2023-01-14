@@ -126,7 +126,6 @@ mod tests {
         assert_eq!(matroska.path, path);
         assert_eq!(matroska.tracks[0].id, 1);
         assert_eq!(matroska.tracks[0].name.as_deref(), Some("Track 1"));
-
         assert_eq!(matroska.tracks[0].language, "eng");
         assert_eq!(matroska.tracks[0].language_ietf, "en");
         assert!(matroska.tracks[0].default);
@@ -134,7 +133,7 @@ mod tests {
         assert_eq!(matroska.tracks[1].name.as_deref(), Some("Track 2"));
         assert_eq!(matroska.tracks[1].language, "fre");
         assert_eq!(matroska.tracks[1].language_ietf, "fr");
-        assert!(matroska.tracks[1].default);
+        assert!(!matroska.tracks[1].default);
     }
 
     #[test]
